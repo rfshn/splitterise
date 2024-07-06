@@ -12,7 +12,7 @@ import { billSchema } from "@/ValidationSchemas/Bill";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
-// import axios from "axios";
+import axios from "axios";
 import { FormControl, FormField, FormItem, FormLabel, Form } from "./ui/form";
 
 type BillFormData = z.infer<typeof billSchema>;
@@ -31,6 +31,7 @@ const BillSplit = () => {
   const [personAmounts, setPersonAmounts] = useState<string[]>([]);
   const [personPercentages, setPersonPercentages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const addPerson = () => {
     setPeople([...people, ""]);
@@ -58,9 +59,6 @@ const BillSplit = () => {
     setPeople(updatedPeople);
   };
 
-  //chang e this to return totalBill / people.length
-  //identidy where in usesState calculateAmountPerPerson uses
-  //quick fix "?" optional used already in implementation
   const calculateAmountPerPerson = (index: number): number => {
     if (splitType === "equally" && people.length > 0) {
       return totalBill / people.length;
@@ -86,6 +84,27 @@ const BillSplit = () => {
 
   async function onSubmit(values: z.infer<typeof billSchema>) {
     console.log(values);
+    try {
+      setIsSubmitting(true);
+      setError("");
+
+      const pplInBill = people.map((person, index) => ({
+        name: person,
+        share: calculateAmountPerPerson(index),
+      }));
+
+      const billData = {
+        ...values,
+        pplInBill,
+        totalBill: parseFloat(values.totalBill.toString()),
+      };
+
+      await axios.post("/api/bills", billData);
+    } catch (error) {
+      console.log(error);
+      setError("Unknown Error Occured");
+      setIsSubmitting(false);
+    }
   }
 
   // console.log(totalBill);
@@ -289,6 +308,7 @@ const BillSplit = () => {
             <Button
               type="submit"
               variant="default"
+              disabled={isSubmitting}
               // onClick={saveBill}
               className="w-full bg-gray-900 text-gray-50 hover:bg-gray-800 focus-visible:ring-gray-950 dark:bg-gray-50 dark:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-50 dark:focus-visible:ring-gray-300"
             >
